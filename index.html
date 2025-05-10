@@ -226,7 +226,15 @@
       const listEl = document.getElementById('listingView');
       listEl.style.display = 'flex';
       listEl.innerHTML = '';
-      
+      if (currentFilter === 'nontwii') {
+        listEl.innerHTML += `
+          <div class="col-12">
+            <div class="alert alert-info text-center" role="alert">
+              This is news not published by The Wii Insider. We are unable to guarantee the accuracy of this information. Nor are we able to have it properly formatted for our site.
+            </div>
+          </div>
+        `;
+      }
 
       const filtered = entriesData.filter(e => {
         const matchesCategory = currentFilter === 'all' 
