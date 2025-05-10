@@ -44,9 +44,14 @@
     }
 
     .img-placeholder { 
-      background-color: var(--placeholder-bg);
-      color: var(--placeholder-text);
-    }
+  background-color: var(--placeholder-bg);
+  color: var(--placeholder-text);
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 
     .site-logo { 
       height: 4rem; 
@@ -251,7 +256,7 @@
               ${e.image
                 ? `<img src="${e.image}" class="card-img-top" alt="" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">`
                 : `<img src="" style="display:none;" onerror="this.nextElementSibling.style.display='flex';">`}
-              <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image</div>
+              <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image Available</div>
             </div>
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">${marked.parseInline(e.titleMd)}</h5>
@@ -286,7 +291,7 @@
             ${e.image
               ? `<img src="${e.image}" class="img-fluid" alt="" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">`
               : `<img src="" style="display:none;" onerror="this.nextElementSibling.style.display='flex';">`}
-            <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image</div>
+            <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image Available</div>
           </div>
           <div>${marked.parse(e.md)}</div>
         </div>
