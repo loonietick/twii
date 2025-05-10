@@ -1,14 +1,322 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/twii/circle.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Wii Insider News</title>
-    <script type="module" crossorigin src="/twii/assets/index-TjWAoOdp.js"></script>
-    <link rel="stylesheet" crossorigin href="/twii/assets/index-BYY0akYJ.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Wii Insider</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --text-color: #333;
+      --card-bg: #fff;
+      --card-border: rgba(0,0,0,.125);
+      --placeholder-bg: #dee2e6;
+      --placeholder-text: #6c757d;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #212529;
+        --text-color: #e9ecef;
+        --card-bg: #343a40;
+        --card-border: rgba(255,255,255,.125);
+        --placeholder-bg: #495057;
+        --placeholder-text: #adb5bd;
+      }
+    }
+
+    body { 
+      background-color: var(--bg-color); 
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .card { 
+      background-color: var(--card-bg);
+      border-color: var(--card-border);
+      color: var(--text-color);
+    }
+
+    .card-header, .accordion-button { 
+      background-color: var(--card-bg);
+    }
+
+    .img-placeholder { 
+      background-color: var(--placeholder-bg);
+      color: var(--placeholder-text);
+    }
+
+    .site-logo { 
+      height: 4rem; 
+      margin-bottom: 0.5rem;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .search-container { margin-bottom: 1.5rem; }
+    
+    .header-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.5rem;
+      border-radius: 50%;
+      border: none;
+      background: var(--card-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    .card-img-top { height: 200px; object-fit: cover; }
+    .snippet { max-height: 4.5em; overflow: hidden; }
+
+
+    .card-title, .card-text, .card a:not(.btn) {
+      color: var(--text-color);
+    }
+
+    .card-body {
+      color: var(--text-color);
+    }
+
+  
+    .text-muted {
+      color: var(--placeholder-text) !important;
+    }
+
+
+    .card-body p, .card-body h1, .card-body h2, .card-body h3, 
+    .card-body h4, .card-body h5, .card-body h6, .card-body span {
+      color: inherit;
+    }
+
+  
+    .form-control {
+      background-color: var(--card-bg);
+      border-color: var(--card-border);
+      color: var(--text-color);
+    }
+    
+    .form-control:focus {
+      background-color: var(--card-bg);
+      border-color: var(--text-color);
+      color: var(--text-color);
+    }
+
+    .form-control::placeholder {
+      color: var(--placeholder-text);
+    }
+
+  
+    .btn-outline-primary {
+      color: var(--text-color);
+      border-color: var(--text-color);
+    }
+
+    .btn-outline-primary:hover {
+      background-color: var(--text-color);
+      color: var(--bg-color);
+    }
+
+
+    .btn-link {
+      color: var(--text-color);
+    }
+
+    .btn-link:hover {
+      color: var(--placeholder-text);
+    }
+  </style>
+</head>
+<body>
+
+
+  <div class="container my-4">
+    <div class="header-container">
+      <img src="logo.png" alt="The Wii Insider Logo" class="site-logo">
+      <h1 class="mb-0">The Wii Insider</h1>
+    </div>
+    <div class="search-container">
+      <input type="text" id="searchInput" class="form-control" placeholder="Search articles..." oninput="handleSearch()">
+    </div>
+    <div id="filterButtons" class="btn-group mb-4" role="group">
+      <button type="button" class="btn btn-primary" onclick="filterNews('all')">All</button>
+      <button type="button" class="btn btn-outline-primary" onclick="filterNews('main')">Main</button>
+      <button type="button" class="btn btn-outline-primary" onclick="filterNews('secondary')">Secondary</button>
+      <button type="button" class="btn btn-outline-primary" onclick="filterNews('nontwii')">Non-TWII</button>
+    </div>
+    <div id="listingView" class="row gy-4"></div>
+   
+    <div id="detailView" class="card" style="display:none;"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    let entriesData = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    async function loadNews() {
+      const res = await fetch('https://twii-e4dff.web.app/news.xml');
+      const text = await res.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'application/xml');
+      const entries = Array.from(xml.getElementsByTagName('entry'));
+      entriesData = entries.map(entry => {
+        const raw = entry.getElementsByTagName('content')[0].textContent.trim();
+        const noEmoji = raw.replace(/<:[^>]+>/g, '');
+        const cleaned = noEmoji.replace(/\*\*\s*(.*?)\s*\*\*/g, '**$1**');
+        const titleMd = cleaned.split('\n')[0];
+        const category = entry.getElementsByTagName('category')[0]?.textContent.trim() || '';
+        return {
+          titleMd,
+          md: cleaned,
+          author: entry.getElementsByTagName('author')[0].textContent,
+          timestamp: new Date(entry.getElementsByTagName('timestamp')[0].textContent),
+          image: entry.getElementsByTagName('image')[0]?.textContent.trim() || '',
+          category
+        };
+      }).sort((a,b) => b.timestamp - a.timestamp);
+      render();
+    }
+
+    function filterNews(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('#filterButtons button').forEach(btn => {
+        const f = btn.getAttribute('onclick').match(/filterNews\('(.+)'\)/)[1];
+        btn.className = 'btn ' + (f === currentFilter ? 'btn-primary' : 'btn-outline-primary');
+      });
+      render();
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('searchInput').value.toLowerCase();
+      render();
+    }
+
+    function render() {
+      const hash = window.location.hash;
+      if (hash.startsWith('#article-')) {
+        showDetail(+hash.split('-')[1]);
+      } else {
+        showListing();
+      }
+    }
+
+    function showListing() {
+      document.getElementById('detailView').style.display = 'none';
+      const listEl = document.getElementById('listingView');
+      listEl.style.display = 'flex';
+      listEl.innerHTML = '';
+      
+
+      const filtered = entriesData.filter(e => {
+        const matchesCategory = currentFilter === 'all' 
+          ? e.category !== 'nontwii'
+          : e.category === currentFilter;
+        
+        const matchesSearch = searchQuery 
+          ? (e.titleMd.toLowerCase().includes(searchQuery) || 
+             e.md.toLowerCase().includes(searchQuery) ||
+             e.author.toLowerCase().includes(searchQuery))
+          : true;
+        
+        return matchesCategory && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="col-12 text-center"><p>No articles found matching your criteria.</p></div>';
+        return;
+      }
+
+      filtered.forEach((e,i) => {
+        const card = document.createElement('div'); 
+        card.className = 'col-md-6 col-lg-4';
+        card.innerHTML = `
+          <div class="card h-100 shadow-sm">
+            <div class="img-wrapper">
+              ${e.image
+                ? `<img src="${e.image}" class="card-img-top" alt="" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">`
+                : `<img src="" style="display:none;" onerror="this.nextElementSibling.style.display='flex';">`}
+              <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image</div>
+            </div>
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">${marked.parseInline(e.titleMd)}</h5>
+              <div class="card-text snippet">${marked.parse(e.md.split('\n').slice(1).join('\n').trim())}</div>
+              <div class="mt-auto">
+                <a href="#article-${entriesData.indexOf(e)}" class="btn btn-primary">Read More</a>
+              </div>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    function showDetail(idx) {
+      const e = entriesData[idx];
+ 
+      if ((currentFilter === 'all' && e.category === 'nontwii') || 
+          (currentFilter !== 'all' && e.category !== currentFilter)) {
+        window.location.hash = '';
+        return;
+      }
+      const detailEl = document.getElementById('detailView');
+      document.getElementById('listingView').style.display = 'none';
+      detailEl.style.display = 'block';
+      detailEl.innerHTML = `
+        <div class="card-body">
+          <a href="#" class="btn btn-link mb-3">&larr; Back to News</a>
+          <h2 class="card-title">${marked.parseInline(e.titleMd)}</h2>
+          <p class="text-muted"><small>By ${e.author} on ${e.timestamp.toLocaleString()}</small></p>
+          <div class="img-wrapper mb-3">
+            ${e.image
+              ? `<img src="${e.image}" class="img-fluid" alt="" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">`
+              : `<img src="" style="display:none;" onerror="this.nextElementSibling.style.display='flex';">`}
+            <div class="img-placeholder" style="${e.image?'display:none;':''}">No Image</div>
+          </div>
+          <div>${marked.parse(e.md)}</div>
+        </div>
+      `;
+    }
+
+    window.addEventListener('hashchange', render);
+    document.addEventListener('DOMContentLoaded', loadNews);
+
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark-theme');
+      
+      if (document.documentElement.classList.contains('dark-theme')) {
+        document.documentElement.style.setProperty('--bg-color', '#212529');
+        document.documentElement.style.setProperty('--text-color', '#e9ecef');
+        document.documentElement.style.setProperty('--card-bg', '#343a40');
+        document.documentElement.style.setProperty('--card-border', 'rgba(255,255,255,.125)');
+        document.documentElement.style.setProperty('--placeholder-bg', '#495057');
+        document.documentElement.style.setProperty('--placeholder-text', '#adb5bd');
+      } else {
+        document.documentElement.style.setProperty('--bg-color', '#f8f9fa');
+        document.documentElement.style.setProperty('--text-color', '#333');
+        document.documentElement.style.setProperty('--card-bg', '#fff');
+        document.documentElement.style.setProperty('--card-border', 'rgba(0,0,0,.125)');
+        document.documentElement.style.setProperty('--placeholder-bg', '#dee2e6');
+        document.documentElement.style.setProperty('--placeholder-text', '#6c757d');
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>
